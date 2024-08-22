@@ -7,21 +7,53 @@ import { redirect } from "next/navigation";
 
 const FormSchema = z.object({
   id: z.string(),
-  customerId: z.string(),
-  amount: z.coerce.number(),
-  status: z.enum(["pending", "paid"]),
+  customerId: z.string({
+    invalid_type_error: "Please select a customer.",
+  }),
+  // *** Note:
+  // *** 1. coercing the amount type from string to number.
+  // *** 2. if the string is empty, it'll default to 0
+  // *** 3. .gt() is the "greater than" function. In this case, we tell Zod we always want the amount greater than 0.
+  amount: z.coerce
+    .number()
+    .gt(0, { message: "Please enter an amount greater than $0." }),
+  status: z.enum(["pending", "paid"], {
+    invalid_type_error: "Please select an invoice status.",
+  }),
   date: z.string(),
 });
 
+export type State = {
+  errors?: {
+    customerId?: string[];
+    amount?: string[];
+    status?: string[];
+  };
+  message?: string | null;
+};
+
 const CreateInvoice = FormSchema.omit({ id: true, date: true });
 
-// *** Note: the action will automatically receive the native FormData object, containing the captured data.
-export async function createInvoice(formData: FormData) {
-  const { customerId, amount, status } = CreateInvoice.parse({
+// *** Note:
+// *** 1. prevState - contains the state passed from the useActionState hook. You won't be using it in the action in this example, but it's a required prop.
+// *** 2. the action will automatically receive the native FormData object, containing the captured data.
+export async function createInvoice(prevState: State, formData: FormData) {
+  // *** Note: safeParse() will return an object containing either a success or error field.
+  const validatedFields = CreateInvoice.safeParse({
     customerId: formData.get("customerId"),
     amount: formData.get("amount"),
     status: formData.get("status"),
   });
+
+  // *** Note: if form validation fails, return errors early. Otherwise, continue.
+  if (!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+      message: "Missing Fields. Failed to Create Invoice.",
+    };
+  }
+
+  const { customerId, amount, status } = validatedFields.data;
 
   // *** Note: turn amount to cents
   const amountInCents = amount * 100;
