@@ -33,7 +33,9 @@ export async function createInvoice(formData: FormData) {
     VALUES (${customerId}, ${amountInCents}, ${status}, ${date})
   `;
 
+  // *** Note: trigger a new server request and re-render the table.
   revalidatePath("/dashboard/invoices");
+  // *** Note: go back to invoices page.
   redirect("/dashboard/invoices");
 }
 
@@ -56,6 +58,15 @@ export async function updateInvoice(id: string, formData: FormData) {
     WHERE id = ${id}
   `;
 
+  // *** Note: trigger a new server request and re-render the table.
   revalidatePath("/dashboard/invoices");
+  // *** Note: go back to invoices page.
   redirect("/dashboard/invoices");
+}
+
+export async function deleteInvoice(id: string) {
+  await sql`DELETE FROM invoices WHERE id = ${id}`;
+
+  // *** Note: since this action is being called in the /dashboard/invoices path, you don't need to call redirect. Calling revalidatePath will trigger a new server request and re-render the table.
+  revalidatePath("/dashboard/invoices");
 }
